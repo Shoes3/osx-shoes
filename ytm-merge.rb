@@ -1,12 +1,13 @@
-# run this with ./cshoes --ruby ytm-merge.rb
+# run this with ruby ytm-merge.rb - modify as needed
+require 'fileutils'
+include FileUtils
 require 'yaml'
-# OSX needs help for ./cshoes
-puts "cd = #{`pwd`}"
-puts "ARGV = #{ARGV.inspect}"
-Dir.chdir(ARGV[0])
-puts "Now #{Dir.pwd}"
 opts = YAML.load_file('ytm.yaml')
-here = Dir.getwd
+if opts['shoes_at']
+  DIR = opts['shoes_at']
+else
+  DIR = "/Applications/Shoes.app/Contents/MacOS"
+end
 home = ENV['HOME']
 GEMS_DIR = File.join(home, '.shoes','+gem')
 puts "DIR = #{DIR}"

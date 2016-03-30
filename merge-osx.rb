@@ -17,6 +17,23 @@ module PackShoes
   
   def PackShoes.merge_osx opts
     # setup defaults if not in the opts
+    rbvstr = opts['target_ruby'] ? opts['target_ruby'] : RUBY_VERSION
+    rbmm = rbvstr[/\d.\d/].to_str
+    # user gems can have a different arch from shoes (hypthen)
+    tarch = opts['target_ruby_arch']
+    flds = tarch.split('-')
+    if flds.size == 2
+      rbarch = tarch
+      ver = flds[1][/\d\d/]
+      puts "parse #{ver.inspect}"
+      gemarch = flds[0]+'-darwin-'+ver
+      puts "rarch-1: #{rbarch} garch: #{gemarch}"
+    else # assume 3
+      gemarch = tarch
+      rbarch = "#{flds[0]}-#{flds[1]}#{flds[2]}"
+      puts "rarch-2: #{rbarch} garch: #{gemarch}"
+    end
+    abort
     opts['publisher'] = 'shoerb' unless opts['publisher']
     opts['website'] = 'http://shoesrb.com/' unless opts['website']
     #opts['hkey_org'] = 'Hackety.org' unless opts['hkey_org']
@@ -29,9 +46,79 @@ module PackShoes
       samples package VERSION.txt)
     #exclude = []
     #packdir = 'packdir'
-    packdir = "#{opts['app_name']}-app"
-    rm_rf packdir
-    mkdir_p(packdir) # where fpm will find it.
+    app_dir = "#{opts['app_name']}.app"
+    rm_rf app_dir
+    mkdir_p "#{app_dir}/Contents/MacOS"
+    mkdir_p "#{app_dir}/Contents/Resources/English.lproj"
+    packdir = "#{app_dir}/Contents/MacOS"
+    # create the resource and sub icons
+    app_name = opts['app_name']
+    icon_name = File.basename(opts['app_icns'])
+    cp opts['app_icns'], "#{app_dir}/"
+    cp opts['app_icns'], "#{app_dir}/Contents/Resources/"
+    vers =[0, 1]
+    File.open(File.join(app_dir, "Contents", "PkgInfo"), 'w') do |f|
+      f << "APPL????"
+    end
+    File.open(File.join(app_dir, "Contents", "Info.plist"), 'w') do |f|
+      f << <<END
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleGetInfoString</key>
+  <string>#{app_name} #{vers.join(".")}</string>
+  <key>CFBundleExecutable</key>
+  <string>#{app_name}-launch</string>
+  <key>CFBundleIdentifier</key>
+  <string>org.hackety.#{name}</string>
+  <key>CFBundleName</key>
+  <string>#{app_name}</string>
+  <key>CFBundleIconFile</key>
+  <string>#{icon_name}</string>
+  <key>CFBundleShortVersionString</key>
+  <string>#{vers.join(".")}</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>IFMajorVersion</key>
+  <integer>#{vers[0]}</integer>
+  <key>IFMinorVersion</key>
+  <integer>#{vers[1]}</integer>
+</dict>
+</plist>
+END
+    end
+  File.open(File.join(app_dir, "Contents", "version.plist"), 'w') do |f|
+      f << <<END
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>BuildVersion</key>
+  <string>1</string>
+  <key>CFBundleVersion</key>
+  <string>#{vers.join(".")}</string>
+  <key>ProjectName</key>
+  <string>#{app_name}</string>
+  <key>SourceVersion</key>
+  <string>#{Time.now.strftime("%Y%m%d")}</string>
+</dict>
+</plist>
+END
+    end
+    File.open(File.join(packdir, "#{app_name}-launch"), 'wb') do |f|
+      f << <<END
+#!/bin/bash
+APPPATH="${0%/*}"
+unset DYLD_LIBRARY_PATH
+cd "$APPPATH"
+echo "[Pango]" > pangorc
+DYLD_LIBRARY_PATH="$APPPATH" PANGO_RC_FILE="$APPPATH/pangorc" SHOES_RUBY_ARCH="#{opts['shoesruby']}" ./#{app_name}-bin 
+END
+    end
+    chmod 0755, File.join("#{packdir}/#{app_name}-launch")
     # copy shoes
     (toplevel-exclude).each do |p|
       cp_r File.join(DIR, p), packdir
@@ -51,7 +138,6 @@ module PackShoes
       cp "#{opts['app_loc']}/#{opts['app_png']}", "#{packdir}/static/app-icon.png"
     end
     # remove chipmonk and ftsearch unless requested
-    rbmm = RUBY_VERSION[/\d.\d/].to_str
     exts = opts['include_exts'] # returns []
     if  !exts || ! exts.include?('ftsearch')
       puts "removing ftsearchrt.so"
@@ -135,18 +221,7 @@ module PackShoes
     where = opts['linux_where']
     Dir.chdir(packdir) do
       mv 'shoes-bin', "#{opts['app_name']}-bin"
-      File.open("#{opts['app_name']}", 'w') do |f|
-        f << <<SCR
-#!/bin/bash
-REALPATH=`readlink -f $0`
-APPPATH="${REALPATH%/*}"
-if [ "$APPPATH" = "." ]; then
-  APPPATH=`pwd`
-fi
-LD_LIBRARY_PATH=$APPPATH $APPPATH/#{opts['app_name']}-bin
-SCR
-      end
-      chmod 0755, "#{opts['app_name']}"
+      #chmod 0755, "#{opts['app_name']}"
       rm_rf 'shoes'
       rm_rf 'debug'
       rm_rf 'Shoes.desktop.tmpl'
@@ -155,48 +230,13 @@ SCR
       rm_rf 'shoes-install.sh'
       rm_rf 'shoes-uninstall.sh'
       rm_rf 'Shoes.desktop'
-      # still inside packdir. Make an fpm after-install script and some 
-      # xdg .desktops
-      if opts['create_menu'] == true
-        File.open("#{opts['app_name']}.desktop",'w') do |f|
-          f << "[Desktop Entry]\n"
-          f << "Name=#{opts['app_name']}\n"
-          f << "Exec=#{where}/bin/#{opts['app_name']}\n"
-          f << "StartupNotify=true\n"
-          f << "Terminal=false\n"
-          f << "Type=Application\n"
-          f << "Comment=#{opts['purpose']}\n"
-          f << "Icon=#{where}/lib/#{packdir}/#{opts['app_png']}\n"
-          f << "Categories=#{opts['category']};\n"
-        end
-      end
-      File.open(after_install, 'w') do |f|
-        f << "#!/bin/bash\n"
-        f << "cd #{where}/bin\n"
-        f << "ln -s #{where}/lib/#{packdir}/#{opts['app_name']} .\n"
-        # do we have a menu?
-        if opts['create_menu'] == true
-          f << "cd #{where}/lib/#{packdir}\n"
-          f << "xdg-desktop-menu install --novendor  #{opts['app_name']}.desktop\n"
-        end
-      end
-      chmod 0755, after_install
-      File.open(before_remove, 'w') do |f|
-        f << "#!/bin/bash\n"
-        f << "rm #{where}/bin/#{opts['app_name']}\n"
-        f << "cd #{where}/lib/#{packdir}\n"
-        if opts['create_menu'] == true
-          f << "xdg-desktop-menu uninstall #{opts['app_name']}.desktop\n"
-        end
-      end
-      chmod 0755, before_remove
     end
     # now we do fpm things - lets build a bash script for debugging
     arch = `uname -m`.strip
     File.open('fpm.sh','w') do |f|
       f << <<SCR
 #!/bin/bash
-fpm --verbose -t osxpkg -s dir -p #{packdir}.deb -f -n #{opts['app_name']} \\
+fpm --verbose -t osxpkg -s dir -p #{packdir}.dpkg -f -n #{opts['app_name']} \\
 --prefix '#{opts['linux_where']}/lib' --after-install #{packdir}/#{after_install} \\
 -a #{arch} --url "#{opts['website']}" --license '#{opts['license_tag']}' --before-remove #{packdir}/#{before_remove} \\
 --vendor '#{opts['publisher']}' --category #{opts['category']} \\

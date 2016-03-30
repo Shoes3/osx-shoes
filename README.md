@@ -1,12 +1,12 @@
-# Linux-Shoes 
+# OSX-Shoes 
 
-This is a Linux only project that packages a **Tight** Shoes project into a more 
-user friendly deb or rpm or ... It attempts to hide the use of Shoes as
+This is a OSX only project that packages a **Tight** Shoes project into a more 
+user friendly OSX dpkg. It attempts to hide the use of Shoes as
 the platform. Basically it merges your app into a copy of Shoes, delete's
 built in Shoes ext's and gems and merges in any Gem's you specify that you've
-installed in your Linux Shoes.
+installed in your OSX Shoes.
 
-The result is a distribution file (.deb)  with just enough Shoes. No manual. No irb. No debug, no
+The result is a distribution file (.dpkg)  with just enough Shoes. No manual. No irb. No debug, no
 samples and the static directory is minimal. No need for Cobbler or packaging. 
 No clever shy files. 
 
@@ -16,13 +16,10 @@ probably doesn't do what you want.
 
 ## Requirements 
 
-* Tight Shoes linux installed - we can't on depend Loose Shoes being built for distribution
-  because it isn't.  If you happen to have Loose Shoes and Tight Shoes on the same system, now would
-  be a good time create an alias for Tight Shoes and put it in your ~/.bashrc or ~/bash_profile or..
-  
-```
-  alias tshoes=~/.shoes/walkabout/shoes
-```
+* Shoes OSX installed - 
+* osx's version of ruby. Doesn't matter what version.
+
+
 
 ### fpm gem is installed
 
