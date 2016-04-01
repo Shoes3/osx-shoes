@@ -27,13 +27,12 @@ module PackShoes
       ver = flds[1][/\d\d/]
       puts "parse #{ver.inspect}"
       gemarch = flds[0]+'-darwin-'+ver
-      puts "rarch-1: #{rbarch} garch: #{gemarch}"
+      puts "rbarch-1: #{rbarch} garch: #{gemarch}"
     else # assume 3
       gemarch = tarch
       rbarch = "#{flds[0]}-#{flds[1]}#{flds[2]}"
-      puts "rarch-2: #{rbarch} garch: #{gemarch}"
+      puts "rbarch-2: #{rbarch} garch: #{gemarch}"
     end
-    abort
     opts['publisher'] = 'shoerb' unless opts['publisher']
     opts['website'] = 'http://shoesrb.com/' unless opts['website']
     #opts['hkey_org'] = 'Hackety.org' unless opts['hkey_org']
@@ -141,13 +140,13 @@ END
     exts = opts['include_exts'] # returns []
     if  !exts || ! exts.include?('ftsearch')
       puts "removing ftsearchrt.so"
-      rm "#{packdir}/lib/ruby/#{rbmm}.0/i386-mingw32/ftsearchrt.so" 
+      rm "#{packdir}/lib/ruby/#{rbmm}.0/#{rbarch}/ftsearchrt.bundle" 
       rm_rf "#{packdir}/lib/shoes/help.rb"
       rm_rf "#{packdir}/lib/shoes/search.rb"
     end
     if  !exts || ! exts.include?('chipmunk')
       puts "removing chipmunk"
-      rm "#{packdir}/lib/ruby/#{rbmm}.0/i386-mingw32/chipmunk.so"
+      rm "#{packdir}/lib/ruby/#{rbmm}.0/#{rbarch}/chipmunk.bundle"
       rm "#{packdir}/lib/shoes/chipmunk.rb"
     end
     # get rid of some things in lib
@@ -195,21 +194,34 @@ END
     rm_gems.each do |g|
       puts "Deleting #{g}"
       rm_rf "#{sgpath}/specifications/#{g}.gemspec"
-      rm_rf "#{sgpath}/extensions/#{RUBY_PLATFORM}/#{rbmm}.0/#{g}"
+      rm_rf "#{sgpath}/extensions/#{rbarch}/#{rbmm}.0/#{g}"
       rm_rf "#{sgpath}/gems/#{g}"
     end
+    # HACK ahead! Copy remaining Shoes gems gem.build_complete files
+    # to different arch name because it's needed . Don't know why.
+    bld = Dir.glob("#{sgpath}/extensions/#{rbarch}/#{rbmm}.0/*") do |p|
+      nm = File.basename(p)
+      puts "hack for #{nm}"
+      cp_r "#{sgpath}/extensions/#{rbarch}/#{rbmm}.0/#{nm}", 
+          "#{sgpath}/extensions/#{gemarch}/#{rbmm}.0"
+    end
 
-    # copy requested gems from user's Shoes GEMS_DIR
+    # copy requested gems from user's GEMS_DIR - usually ~/.shoes/+gem
     incl_gems.delete('sqlite3') if incl_gems.include?('sqlite3')
     incl_gems.each do |name| 
       puts "Copy #{name}"
       cp "#{GEMS_DIR}/specifications/#{name}.gemspec", "#{sgpath}/specifications"
       # does the gem have binary?
-      built = "#{GEMS_DIR}/extensions/#{RUBY_PLATFORM}/#{rbmm}.0/#{name}/gem.build_complete"
+      built = "#{GEMS_DIR}/extensions/#{gemarch}/#{rbmm}.0/#{name}/gem.build_complete"
       if File.exist? built
-        mkdir_p "#{sgpath}/extensions/#{RUBY_PLATFORM}/#{rbmm}.0/#{name}"
-        cp "#{GEMS_DIR}/extensions/#{RUBY_PLATFORM}/#{rbmm}.0/#{name}/gem.build_complete",
-          "#{sgpath}/extensions/#{RUBY_PLATFORM}/#{rbmm}.0/#{name}"
+        mkdir_p "#{sgpath}/extensions/#{rbarch}/#{rbmm}.0/#{name}"
+        cp "#{GEMS_DIR}/extensions/#{gemarch}/#{rbmm}.0/#{name}/gem.build_complete",
+          "#{sgpath}/extensions/#{rbarch}/#{rbmm}.0/#{name}"
+          
+        mkdir_p "#{sgpath}/extensions/#{gemarch}/#{rbmm}.0/#{name}"
+        cp "#{GEMS_DIR}/extensions/#{gemarch}/#{rbmm}.0/#{name}/gem.build_complete",
+          "#{sgpath}/extensions/#{gemarch}/#{rbmm}.0/#{name}"
+        
       end
       cp_r "#{GEMS_DIR}/gems/#{name}", "#{sgpath}/gems"
     end
@@ -246,6 +258,7 @@ SCR
     chmod 0755, 'fpm.sh'
     puts "Please examine fpm.sh and then ./ftm.sh to build the deb"
     #`./fpm.sh`
+    `bsdtar -cjf #{app_name}.bz #{app_dir}`
   end
 end
 
