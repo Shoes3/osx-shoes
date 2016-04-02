@@ -70,7 +70,7 @@ module PackShoes
   <key>CFBundleExecutable</key>
   <string>#{app_name}-launch</string>
   <key>CFBundleIdentifier</key>
-  <string>org.hackety.#{name}</string>
+  <string>#{opts['osx_identifier']}.#{name}</string>
   <key>CFBundleName</key>
   <string>#{app_name}</string>
   <key>CFBundleIconFile</key>
@@ -139,7 +139,7 @@ END
     # remove chipmonk and ftsearch unless requested
     exts = opts['include_exts'] # returns []
     if  !exts || ! exts.include?('ftsearch')
-      puts "removing ftsearchrt.so"
+      puts "removing ftsearchrt"
       rm "#{packdir}/lib/ruby/#{rbmm}.0/#{rbarch}/ftsearchrt.bundle" 
       rm_rf "#{packdir}/lib/shoes/help.rb"
       rm_rf "#{packdir}/lib/shoes/search.rb"
@@ -248,16 +248,22 @@ END
     File.open('fpm.sh','w') do |f|
       f << <<SCR
 #!/bin/bash
-fpm --verbose -t osxpkg -s dir -p #{packdir}.dpkg -f -n #{opts['app_name']} \\
---prefix '#{opts['linux_where']}/lib' --after-install #{packdir}/#{after_install} \\
--a #{arch} --url "#{opts['website']}" --license '#{opts['license_tag']}' --before-remove #{packdir}/#{before_remove} \\
---vendor '#{opts['publisher']}' --category #{opts['category']} \\
---description "#{opts['purpose']}" -m '#{opts['maintainer']}' #{packdir}
+fpm --verbose -t osxpkg -s dir -p #{app_name}.pkg -f -n #{opts['app_name']} \\
+--osxpkg-identifier-prefix #{opts['osx_identifier']}  \\
+--prefix /Applications -a #{arch} #{app_dir}
 SCR
     end
     chmod 0755, 'fpm.sh'
-    puts "Please examine fpm.sh and then ./ftm.sh to build the deb"
+    #puts "Please examine fpm.sh and then ./ftm.sh to build the .pkg"
     #`./fpm.sh`
+    File.open('pkg.sh', 'w') do |f|
+      f << <<SCR
+pkgbuild --root #{app_dir} --identifier #{opts['osx_identifier']}.#{app_name} \\
+--install-location /Applications #{app_name}.pkg
+SCR
+    end
+    chmod 0755, 'pkg.sh'
+    puts "Please examine pkg.sh and then ./pkg.sh to build the .pkg"
     `bsdtar -cjf #{app_name}.bz #{app_dir}`
   end
 end

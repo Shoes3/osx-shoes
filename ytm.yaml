@@ -10,6 +10,7 @@ app_icns: /Users/ccoupe/Projects/icons/ytm/ytm.icns
 purpose: 'Compute Yield to Maturity'
 publisher: 'Right Wing Conspiracy'
 website: 'https://github.com/Shoes3/shoes3'
+osx_identifier: 'com.mvmanila'
 maintainer: 'ccoupe@cableone.net'
 license: /Users/ccoupe/build/osx-shoes/ytm/Ytm.license
 license_tag: 'open source'
