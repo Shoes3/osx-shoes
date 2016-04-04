@@ -18,8 +18,11 @@ probably doesn't do what you want.
 
 * Shoes OSX installed - 
 * osx's version of ruby. Doesn't matter what version.
-* bsdtar 
-* later versions may need pkgbuild - which might require XCode and friends.
+* bsdtar OR 
+* to create a dmg, we've included a copy of [create_dmg](https://github.com/andreyvit/create-dmg)
+  Note: that package is not maintained. 
+* later versions may use pkgbuild - which might require XCode and friends.
+  PLEASE read http://thegreyblog.blogspot.com/2014/06/os-x-creating-packages-from-command_2.html
 
 
 ## Contents 

@@ -243,28 +243,62 @@ END
       rm_rf 'shoes-uninstall.sh'
       rm_rf 'Shoes.desktop'
     end
-    # now we do fpm things - lets build a bash script for debugging
+    # now we build scripts that have to be executed manually.
     arch = `uname -m`.strip
-    File.open('fpm.sh','w') do |f|
-      f << <<SCR
-#!/bin/bash
-fpm --verbose -t osxpkg -s dir -p #{app_name}.pkg -f -n #{opts['app_name']} \\
---osxpkg-identifier-prefix #{opts['osx_identifier']}  \\
---prefix /Applications -a #{arch} #{app_dir}
-SCR
+    # !!! pkgbuild doesn't work yet!!!
+    # create the plist for pkgbuild to use
+    File.open('pkg.plist','w') do |f|
+      f << <<END
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+  <dict>
+    <key>BundleHasStrictIdentifier</key>
+    <true/>
+    <key>BundleIsRelocatable</key>
+    <true/>
+    <key>BundleIsVersionChecked</key>
+    <true/>
+    <key>BundleOverwriteAction</key>
+    <string>upgrade</string>
+    <key>RootRelativeBundlePath</key>
+    <string>Applications/#{app_dir}</string>
+  </dict>
+</array>
+</plist>
+END
     end
-    chmod 0755, 'fpm.sh'
-    #puts "Please examine fpm.sh and then ./ftm.sh to build the .pkg"
-    #`./fpm.sh`
     File.open('pkg.sh', 'w') do |f|
       f << <<SCR
 pkgbuild --root #{app_dir} --identifier #{opts['osx_identifier']}.#{app_name} \\
---install-location /Applications #{app_name}.pkg
+--component-plist pkg.plist #{app_name}.pkg
 SCR
     end
     chmod 0755, 'pkg.sh'
-    puts "Please examine pkg.sh and then ./pkg.sh to build the .pkg"
-    `bsdtar -cjf #{app_name}.bz #{app_dir}`
+    # puts "Please examine pkg.sh and then ./pkg.sh to build the .pkg"
+    
+    # the following works! 
+    #`bsdtar -cjf #{app_name}.bz #{app_dir}`
+    
+    # build a dmg assumes create_dmg is in ./yoursway-create-dmg
+    File.open('dmg.sh', 'w') do |f|
+      f << <<SCR
+#!/bin/bash 
+test -f #{app_name}-Installer.dmg && rm #{app_name}-Installer.dmg
+./yoursway-create-dmg/create-dmg --volname "#{app_name} Installer" \
+--window-pos 200 120 \
+--window-size 800 400 \
+--icon-size 100 \
+--icon #{app_name}.app 200 190 \
+--hide-extension #{app_name}.app \
+--app-drop-link 600 185 \
+--no-internet-enable \
+#{app_name}-Installer.dmg #{app_dir}
+SCR
+    end
+    chmod 0755, 'dmg.sh'
+    puts "For a dmg, do './dmg.sh'"
   end
 end
 
