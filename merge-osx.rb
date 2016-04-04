@@ -288,12 +288,13 @@ SCR
 test -f #{app_name}-Installer.dmg && rm #{app_name}-Installer.dmg
 ./yoursway-create-dmg/create-dmg --volname "#{app_name} Installer" \
 --window-pos 200 120 \
---window-size 800 400 \
---icon-size 100 \
---icon #{app_name}.app 200 190 \
+--window-size 400 300 \
+--background bg/osx-background.png \
+--icon-size 80 \
+--icon #{app_name}.app 150 10 \
 --hide-extension #{app_name}.app \
---app-drop-link 600 185 \
---no-internet-enable \
+--app-drop-link 150 185 \
+--eula #{app_dir}/Contents/MacOS/COPYING.txt \
 #{app_name}-Installer.dmg #{app_dir}
 SCR
     end
